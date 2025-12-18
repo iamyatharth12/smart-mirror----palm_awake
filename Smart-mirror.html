@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Mirror — Palm Awake</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+<style>
+:root {
+  --bg: #000;
+  --fg: #eaeaea;
+  --cyan: #00eaff;
+  --panel: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.18);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", monospace;
+  overflow: hidden;
+}
+
+/* ===== UI ROOT ===== */
+#ui {
+  position: absolute;
+  inset: 0;
+  padding: 40px;
+  display: grid;
+  grid-template-columns: 1fr 3fr 1fr;
+  gap: 32px;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+#ui.active {
+  opacity: 1;
+}
+
+/* ===== COLUMNS ===== */
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+
+.widget {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 16px 20px;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
+
+.value {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.value.cyan {
+  color: var(--cyan);
+}
+
+
+#time {
+  font-size: 40px;
+  letter-spacing: 2px;
+}
+
+#date {
+  font-size: 13px;
+  opacity: 0.7;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+
+
+#center {
+  
+}
+
+
+video {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+
+  
+  <div class="column">
+    <div class="widget">
+      <div class="label">Time</div>
+      <div id="time">--:--</div>
+      <div id="date">---</div>
+    </div>
+
+    <div class="widget">
+      <div class="label">Weather</div>
+      <div class="value cyan">CLEAR</div>
+    </div>
+
+    <div class="widget">
+      <div class="label">Network</div>
+      <div class="value">ONLINE</div>
+    </div>
+  </div>
+
+  
+  <div id="center"></div>
+
+ 
+  <div class="column">
+    <div class="widget">
+      <div class="label">Battery</div>
+      <div class="value cyan">CHARGED · 100%</div>
+    </div>
+
+    <div class="widget">
+      <div class="label">Location</div>
+      <div class="value">Nagaon</div>
+    </div>
+
+    <div class="widget">
+      <div class="label">Status</div>
+      <div class="value">SYSTEM READY</div>
+    </div>
+  </div>
+
+</div>
+
+<video id="video" playsinline></video>
+
+<script>
+
+function updateTime() {
+  const d = new Date();
+  document.getElementById("time").textContent =
+    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  document.getElementById("date").textContent =
+    d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+const ui = document.getElementById("ui");
+let sleepTimer = null;
+const SLEEP_TIME = 5000;
+
+function wake() {
+  ui.classList.add("active");
+  clearTimeout(sleepTimer);
+  sleepTimer = setTimeout(() => {
+    ui.classList.remove("active");
+  }, SLEEP_TIME);
+}
+
+
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  modelComplexity: 0,
+  minDetectionConfidence: 0.6,
+  minTrackingConfidence: 0.6
+});
+
+hands.onResults(results => {
+  
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    wake();
+  }
+});
+
+
+const video = document.getElementById("video");
+
+const camera = new Camera(video, {
+  onFrame: async () => {
+    await hands.send({ image: video });
+  },
+  width: 640,
+  height: 480
+});
+
+camera.start();
+</script>
+
+</body>
+</html>
